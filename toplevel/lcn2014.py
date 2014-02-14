@@ -5,10 +5,9 @@ def nonblank_lines(f):
 			yield line
 
 def parse(filename):
-	import os
+	import os, subprocess
 	EXPNAME="lcn2014"
 	[expinfo,ext] = os.path.splitext(os.path.basename(filename))
-	print expinfo
 	try:
 		[expname,expnum] = expinfo.split('_')
 	except ValueError:
@@ -62,8 +61,6 @@ def parse(filename):
 		with open('%s/%d/WhichMu.txt' % (expinfo,ii+1),'w') as f:
 			f.write(str(ii+1)+'\n')
 	
-	os.chdir('%s/shared/' % expinfo)
-	
 	gsz = int(args['GroupSize'][0])
 	if args['GroupShift'][0] == "+":
 		args['GroupShift'] = str(gsz-(gsz/2))
@@ -71,5 +68,14 @@ def parse(filename):
 		args['GroupShift'] = str(gsz/2)
 	
 	for key,val in args.items():
-		with open('%s.txt' % key,'w') as f:
+		with open('%s/shared/%s.txt' % (expinfo,key),'w') as f:
 			f.write(' '.join(val)+'\n')
+
+	with open('%s/shared/URLS.txt' % expinfo,'w') as f:
+		f.write('/squid/crcox/9c2.mat\n')
+
+	subprocess.call(['rsync','-avz',expinfo,"crcox@chtc:ChtcRun/"])
+	subprocess.call(['ssh','crcox@chtc','cp ~/src/LCN_2014/bin/soslasso_lcn2014_sim ~/ChtcRun/%s/shared/lcn2014' % expinfo])
+	
+	return 0
+
