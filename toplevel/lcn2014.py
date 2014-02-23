@@ -1,3 +1,7 @@
+import os, subprocess
+EXPNAME='lcn2014'
+params = {'pathToBinary':'~/src/LCN_2014/bin/soslasso_lcn2014_sim', 'cmdtorun':'lcn2014', 'expinfo':None,'outPattern':'soslasso_wd001_nh7_*.mat','data':'9c2.mat','host':'crcox@chtc'}
+
 def nonblank_lines(f):
 	for l in f:
 		line = l.rstrip()
@@ -5,11 +9,9 @@ def nonblank_lines(f):
 			yield line
 
 def parse(filename):
-	import os, subprocess
-	EXPNAME="lcn2014"
-	[expinfo,ext] = os.path.splitext(os.path.basename(filename))
+	[params['expinfo'],ext] = os.path.splitext(os.path.basename(filename))
 	try:
-		[expname,expnum] = expinfo.split('_')
+		[expname,expnum] = params['expinfo'].split('_')
 	except ValueError:
 		print "\nERROR: The filename does not follow convention 'expcode_expnum.txt'.\n"
 		return 1
@@ -48,17 +50,19 @@ def parse(filename):
 
 # Setup file-structure.
 	try:
-		os.mkdir(expinfo)
+		os.mkdir(params['expinfo'])
 	except OSError:
 		print "\nERROR: 'An project already exists for this expcode and number.\n"
 		return 4
 
-	os.mkdir('%s/shared/' % expinfo)
+	os.mkdir('%(expinfo)s/shared/' % params)
 
 	# This experiment will have separate jobs for each level of mu.
 	for ii,mm in enumerate(args['GroupSparseVals']):
-		os.mkdir('%s/%d/' % (expinfo,ii+1))
-		with open('%s/%d/WhichMu.txt' % (expinfo,ii+1),'w') as f:
+		filename = os.path.join(params['expinfo'],str(ii+1))
+		os.mkdir(filename)
+		filename = os.path.join(params['expinfo'],str(ii+1),'WhichMu.txt')
+		with open(filename,'w') as f:
 			f.write(str(ii+1)+'\n')
 	
 	gsz = int(args['GroupSize'][0])
@@ -68,14 +72,20 @@ def parse(filename):
 		args['GroupShift'] = str(gsz/2)
 	
 	for key,val in args.items():
-		with open('%s/shared/%s.txt' % (expinfo,key),'w') as f:
+		filename=os.path.join(params['expinfo'],'shared',key+'.txt')
+		with open(filename,'w') as f:
 			f.write(' '.join(val)+'\n')
 
-	with open('%s/shared/URLS.txt' % expinfo,'w') as f:
-		f.write('/squid/crcox/9c2.mat\n')
+	filename=os.path.join(params['expinfo'],'shared','URLS.txt')
+	with open(filename,'w') as f:
+		f.write('/squid/crcox/%(data)s\n' % params)
 
-	subprocess.call(['rsync','-avz',expinfo,"crcox@chtc:ChtcRun/"])
-	subprocess.call(['ssh','crcox@chtc','cp ~/src/LCN_2014/bin/soslasso_lcn2014_sim ~/ChtcRun/%s/shared/lcn2014' % expinfo])
-	
+	subprocess.call(['rsync','-avz',params['expinfo'],params['host']+':ChtcRun/'])
+	temp = subprocess.call(['ssh',params['host'],'cp %(pathToBinary)s ~/ChtcRun/%(expinfo)s/shared/%(cmdtorun)s' % params])
+
+	temp = subprocess.call(['ssh',params['host'],'cd ChtcRun/; ./mkdag --cmdtorun=%(cmdtorun)s --data=%(expinfo)s --dagdir=%(expinfo)sout  --pattern=%(outPattern)s --type=Matlab' % params])
 	return 0
 
+def run(expinfo):
+	params['expinfo']=expinfo
+	subprocess.call(['ssh',params['host'],'cd ChtcRun/%(expinfo)sout/; condor_submit_dag mydag.dag' % params])
