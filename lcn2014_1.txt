@@ -1,0 +1,50 @@
+# Comments are not allowed on the same lines as actual arguments.
+# Blank lines are ignored. Feel free to create a version of this file
+# without comments if they are in the way.
+
+# The group sparsity values (technically, mu) determine the penalty
+# for selecting multiple groups. The penalty is minimized by selecting
+# similar groups across subjects, and of course by selecting fewer groups
+# overall.
+GroupSparseVals: 1 2 3 4 5
+
+# The SparseVals (technically, lambda) determine the overall sparsity
+# penalty. This penalty is minimized by selecting as few voxels as possible.
+# In conjunction with the Group sparsity penalty, the result will be a sparse
+# selection of voxels that have a similar structure across subjects.
+SparseVals: 1 2 3 4 5
+
+# There are 3 implemented cross validation methods.
+# For this experiment, the only one we want to use is 'kfold'.
+CrossValidationMethod: kfold
+
+# The data are split into 3 layers: input, hidden, and output. 
+# They each have a particular structure, and are intended to demonstrate
+# different things. We can add arbitrary voxels (i.e. columns of i.i.d.
+# Gaussian noise) to the data to make recovering the signal more difficult.
+# This really shouldn't effect much unless we also shuffle.
+# You should provide 3 integer values, separated by spaces. For the most part,
+# we care about manipulating the hidden layer, so typically the first and 
+# third value will be zero. Position 1, 2, and 3 are Input, Hidden, and Output,
+# respectively.
+AddArbitraryByLayer: 0 21 0
+
+# Shuffle by layer lets you specify which layers should be shuffled
+# (so that informative voxels are no longer neighbors). You should provide
+# 3 binary values (0 or 1), where 1 means "shuffle this layer". There are 
+# two shuffle methods: interleave and permute. Permute shuffles randomly;
+# interleave maximizes the distance between informative voxels.
+ShuffleByLayer: 0 1 0
+ShuffleMethod: permute
+
+# Group size and group shift have to do with how voxels are considered similar
+# within and across subjects. Group size of 5 and shift of 2 will group voxels
+# [1 2 3 4 5] in group 1 and [3 4 5 6 7] in group 2. Often, a group shift of about
+# half the group size is reasonable. But, odd numbered group sizes are allowed. If
+# you provide a + instead of a number, GroupShift = GroupSize-(GroupSize//2), i.e.,
+# divide by two using integer division and round up. If you provide a -, 
+# GroupShift = GroupSize//2, i.e., divide by two using integer division (which effectively
+# rounds down).
+# tl;dr: GroupShift + means ceiling(GroupSize/2); GroupShift - means floor(GroupSize/2).
+GroupSize: 5
+GroupShift: +
