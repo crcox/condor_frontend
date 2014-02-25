@@ -1,0 +1,5 @@
+# Parameters for jlp+lasso_1
+SparseVals: 1.0000e-03 0.2230 0.4450 0.6670 0.8890
+TargetCategory: 'Face'
+MeanCenter: 1
+NormVariance: 1
