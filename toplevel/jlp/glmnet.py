@@ -29,7 +29,7 @@ class ExpObj:
 		self.nJobs = njobs
 
 	def run(self):
-		subprocess.call(['ssh',self.RemoteHost,'matlab -r %s' % fullfile(self.RemoteDir,'CondorSimulator.m')])
+		subprocess.call(['ssh',self.RemoteHost,'cd %s ; nohup matlab -r CondorSimulator' % self.RemoteDir])
 		
 	def check(self):
 		progress = subprocess.check_output(['ssh',self.RemoteHost,'find',self.RemoteDir, '-type f -name "jlp+glmnet_s??_cv??.mat" | wc -l'])
@@ -108,11 +108,11 @@ def parse(filename):
 		f.write("addpath('shared');\n")
 		f.write("tic;\n");
 		f.write("for i = 1:%d\n" % njobs)
-		f.write("\tcopyfile('sprintf('%03d/*',i),'./');\n")
+		f.write("\tcopyfile(sprintf('%03d/*',i),'./');\n")
 		f.write("\tmain();\n")
 		f.write("end\n")
 		f.write("h=fopen('DONE.txt','w');\n")
-		f.write("fprintf(h,'Completed %d jobs in %.2f seconds.\n',100,toc);\n")
+		f.write("fprintf(h,'Completed %d jobs in %.2f seconds.',100,toc);\n")
 		f.write("fclose(h);\n")
 		f.write("quit\n")
 	
