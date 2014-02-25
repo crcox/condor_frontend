@@ -1,18 +1,49 @@
+import os, subprocess
 # GLOBAL VARIABLES
-CommentChars = ["#","/"]
-
+EXPNAME="jlp+glmnet"
 ValidParameters = ['Alpha','SparseVals','TargetCategory','MeanCenter','NormVariance']
 args = {key: None for key in ValidParameters}
+CommentChars = ["#","/"]
 
+# UTILITIES
 def nonblank_lines(f):
 	for l in f:
 		line = l.rstrip()
 		if line:
 			yield line
 
+# CLASSES
+class ExpObj:
+	"""A object to interface with experiments."""
+	def __init__(self,name,expnum,host,rdir,ldir,alpha,lam,targ,center,norm,njobs):
+		self.Name = name
+		self.ExpNum = expnum
+		self.RemoteHost = host
+		self.RemoteDir = rdir
+		self.LocalDir = ldir
+		self.Alpha = alpha
+		self.SparseVals = lam
+		self.TargetCategory = targ
+		self.MeanCenter = center
+		self.NormVariance = norm
+		self.nJobs = njobs
+
+	def run(self):
+		subprocess.call(['ssh',self.RemoteHost,'matlab -r %s' % fullfile(self.RemoteDir,'CondorSimulator.m')])
+		
+	def check(self):
+		progress = subprocess.check_output(['ssh',self.RemoteHost,'find',self.RemoteDir, '-type f -name "jlp+glmnet_s??_cv??.mat" | wc -l'])
+		print "%d out of %d jobs completed." % (int(progress),self.nJobs)
+
+	def pull(self):
+		subprocess.call(['rsync','-avz','%s:%s/ %s/Results/' % (self.RemoteHost,self.RemoteDir,self.LocalDir)])
+	
+	def disp(self):
+		for key,val in vars(self).items():
+			print key,":",val
+
+# FUNCTIONS
 def parse(filename):
-	import os, subprocess
-	EXPNAME="jlp+glmnet"
 	[expinfo,ext] = os.path.splitext(os.path.basename(filename))
 	try:
 		[expname,expnum] = expinfo.split('_')
@@ -47,35 +78,52 @@ def parse(filename):
 		return 3
 
 # Setup file-structure.
+	ldir = os.path.join(os.getcwd(),expinfo)
 	try:
-		os.mkdir(expinfo)
+		os.mkdir(ldir)
 	except OSError:
 		print "\nERROR: 'A project already exists for this expcode and number.\n"
 		return 4
 
-	os.mkdir('%s/shared/' % expinfo)
+	os.mkdir(os.path.join(ldir,'shared'))
 
 	# This experiment will have separate jobs for each Hold out set and level of mu.
 	# Each job will do 9-fold CV over a set of lambda.
 	ncv = 10;
 	nsub = 10;
+	njobs = ncv*nsub
 	for i in range(ncv):
 		for j in range(nsub):
-			job = (i*nsub) + j
-			os.mkdir('%s/%03d/' % (expinfo,job+1))
-			with open('%s/%03d/WhichCV.txt' % (expinfo,job+1),'w') as f:
+			job = ((i*nsub) + j) + 1
+			jobdir = '%03d' % job
+			os.mkdir(os.path.join(ldir,jobdir))
+			with open(os.path.join(ldir,jobdir,'WhichCV.txt'),'w') as f:
 				f.write(str(i+1)+'\n')
-			with open('%s/%03d/WhichSubject.txt' % (expinfo,job+1),'w') as f:
+			with open(os.path.join(ldir,jobdir,'WhichSubject.txt'),'w') as f:
 				f.write(str(j+1)+'\n')
-			with open('%s/%03d/URLS' % (expinfo,job+1),'w') as f:
+			with open(os.path.join(ldir,jobdir,'URLS'),'w') as f:
 				f.write('/crcox/jlp%02d.mat\n' % (j+1))
+
+	with open('%s/CondorSimulator.m' % expinfo,'w') as f:
+		f.write("addpath('shared');\n")
+		f.write("tic;\n");
+		f.write("for i = 1:%d\n" % njobs)
+		f.write("\tcopyfile('sprintf('%03d/*',i),'./');\n")
+		f.write("\tmain();\n")
+		f.write("end\n")
+		f.write("h=fopen('DONE.txt','w');\n")
+		f.write("fprintf(h,'Completed %d jobs in %.2f seconds.\n',100,toc);\n")
+		f.write("fclose(h);\n")
+		f.write("quit\n")
 	
 	for key,val in args.items():
-		with open('%s/shared/%s.txt' % (expinfo,key),'w') as f:
+		with open(os.path.join(ldir,'shared',str(key)+'.txt'),'w') as f:
 			f.write(' '.join(val)+'\n')
 
-	subprocess.call(['rsync','-avz',expinfo+'/',"ccox@opt3:/data/crcox/JLP/jlp+glmnet/Exp%02d/" % int(expnum)])
-	subprocess.call(['ssh','ccox@opt3','ln -s /data/crcox/JLP/data/*.mat /data/crcox/JLP/jlp+glmnet/Exp%02d/' % int(expnum)])
+	host = 'ccox@opt3'
+	rdir = "/data/crcox/JLP/jlp+glmnet/Exp%02d" % int(expnum)
+	subprocess.call(['rsync','-avz',expinfo+'/',host+':'+rdir+'/'])
+	subprocess.call(['ssh',host,'ln -s /data/crcox/JLP/data/*.mat',rdir])
 	
-	return 0
-
+	Exp = ExpObj(expname,expnum,host,rdir,ldir,args['Alpha'],args['SparseVals'],args['TargetCategory'],args['MeanCenter'],args['NormVariance'],njobs)
+	return Exp
