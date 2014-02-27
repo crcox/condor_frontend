@@ -29,14 +29,20 @@ class ExpObj:
 		self.nJobs = njobs
 
 	def run(self):
-		subprocess.call(['ssh',self.RemoteHost,'cd %s ; nohup matlab -r CondorSimulator' % self.RemoteDir])
+		args = ['nohup','ssh',self.RemoteHost,'cd %s ; matlab -r CondorSimulator' % self.RemoteDir]
+		print 'executing '+' '.join(args)
+		subprocess.call(args)
 		
 	def check(self):
 		progress = subprocess.check_output(['ssh',self.RemoteHost,'find',self.RemoteDir, '-type f -name "jlp+glmnet_s??_cv??.mat" | wc -l'])
 		print "%d out of %d jobs completed." % (int(progress),self.nJobs)
 
 	def pull(self):
-		subprocess.call(['rsync','-avz','%s:%s/ %s/Results/' % (self.RemoteHost,self.RemoteDir,self.LocalDir)])
+		os.mkdir(os.path.join(ldir,'Results'))
+		args = ["rsync", "-avz", "--include", "*/", "--include", "*.mat", "--exclude", "*", "-e", "ssh"]
+		args.append('%s:%s/ %s/Results/' % (self.RemoteHost,self.RemoteDir,self.LocalDir))
+		print "executing "+' '.join(args)
+		subprocess.call(args)
 	
 	def disp(self):
 		for key,val in vars(self).items():
@@ -87,7 +93,7 @@ def parse(filename):
 
 	os.mkdir(os.path.join(ldir,'shared'))
 
-	# This experiment will have separate jobs for each Hold out set and level of mu.
+	# This experiment will have separate jobs for each Hold out set and subject.
 	# Each job will do 9-fold CV over a set of lambda.
 	ncv = 10;
 	nsub = 10;
@@ -106,6 +112,7 @@ def parse(filename):
 
 	with open('%s/CondorSimulator.m' % expinfo,'w') as f:
 		f.write("addpath('shared');\n")
+		f.write("addpath('/data/crcox/utils/glmnet');\n")
 		f.write("tic;\n");
 		f.write("for i = 1:%d\n" % njobs)
 		f.write("\tcopyfile(sprintf('%03d/*',i),'./');\n")
@@ -123,7 +130,7 @@ def parse(filename):
 	host = 'ccox@opt3'
 	rdir = "/data/crcox/JLP/jlp+glmnet/Exp%02d" % int(expnum)
 	subprocess.call(['rsync','-avz',expinfo+'/',host+':'+rdir+'/'])
-	subprocess.call(['ssh',host,'ln -s /data/crcox/JLP/data/*.mat',rdir])
+	subprocess.call(['ssh',host,'ln -s /data/crcox/JLP/data/*.mat',rdir,';','cp /data/crcox/JLP/jlp+glmnet/src/*',rdir+'/shared/'])
 	
 	Exp = ExpObj(expname,expnum,host,rdir,ldir,args['Alpha'],args['SparseVals'],args['TargetCategory'],args['MeanCenter'],args['NormVariance'],njobs)
 	return Exp
