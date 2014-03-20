@@ -1,6 +1,11 @@
 import os, subprocess
-EXPNAME='lcn2014'
-params = {'pathToBinary':'~/src/LCN_2014/bin/soslasso_lcn2014_sim', 'cmdtorun':'lcn2014', 'expinfo':None,'outPattern':'soslasso_wd001_nh7_*.mat','data':'9c2.mat','host':'crcox@chtc'}
+EXPNAME='lcn+soslasso'
+params = {'pathToBinary':'~/src/lcn+soslasso/bin/lcn+soslasso', 'cmdtorun':'lcn+soslasso', 'expinfo':None,'outPattern':'lcn+soslasso_wd001_nh7_*.mat','data':'9c2.mat','host':'crcox@chtc'}
+
+CommentChars = ["#","/"]
+# Establish valid parameters.
+ValidParameters = ['GroupSparseVals','SparseVals','WhichCVMethod','NumberOfArbVox','WhichShuffle','WhichShuffleMethod','GroupSize','GroupShift']
+args = {key: None for key in ValidParameters}
 
 def nonblank_lines(f):
 	for l in f:
@@ -20,11 +25,6 @@ def parse(filename):
 		print "\nERROR: Experiment code does not match the code that this module expects! Check your file name.\n"
 		return 1
 	
-
-	CommentChars = ["#","/"]
-# Establish valid parameters.
-	ValidParameters = ['GroupSparseVals','SparseVals','CrossValidationMethod','AddArbitraryByLayer','ShuffleByLayer','ShuffleMethod','GroupSize','GroupShift']
-	args = {key: None for key in ValidParameters}
 
 # Parse text to dictionary, checking that all parameters
 # are valid for this experiment.
@@ -57,7 +57,7 @@ def parse(filename):
 
 	os.mkdir('%(expinfo)s/shared/' % params)
 
-	# This experiment will have separate jobs for each level of mu.
+	# This experiment will have separate jobs for each level of mu, and group size
 	for ii,mm in enumerate(args['GroupSparseVals']):
 		filename = os.path.join(params['expinfo'],str(ii+1))
 		os.mkdir(filename)

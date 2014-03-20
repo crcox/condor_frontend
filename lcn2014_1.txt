@@ -6,13 +6,13 @@
 # for selecting multiple groups. The penalty is minimized by selecting
 # similar groups across subjects, and of course by selecting fewer groups
 # overall.
-GroupSparseVals: 1 2 3 4 5
+GroupSparseVals: 0.0500 0.1500 0.2500 0.3500 0.4500 0.5500 0.6500
 
 # The SparseVals (technically, lambda) determine the overall sparsity
 # penalty. This penalty is minimized by selecting as few voxels as possible.
 # In conjunction with the Group sparsity penalty, the result will be a sparse
 # selection of voxels that have a similar structure across subjects.
-SparseVals: 1 2 3 4 5
+SparseVals: 0.0200 0.0300 0.0400 0.0500 0.0600 0.0700 0.0800 0.0900 0.1000 0.1100 0.1200 0.1300 0.1400 0.1500 0.1600 0.1700 0.1800 0.1900 0.2000
 
 # There are 3 implemented cross validation methods.
 # For this experiment, the only one we want to use is 'kfold'.
@@ -27,7 +27,7 @@ CrossValidationMethod: kfold
 # we care about manipulating the hidden layer, so typically the first and 
 # third value will be zero. Position 1, 2, and 3 are Input, Hidden, and Output,
 # respectively.
-AddArbitraryByLayer: 0 21 0
+AddArbitraryByLayer: 0 22 0
 
 # Shuffle by layer lets you specify which layers should be shuffled
 # (so that informative voxels are no longer neighbors). You should provide
@@ -46,5 +46,5 @@ ShuffleMethod: permute
 # GroupShift = GroupSize//2, i.e., divide by two using integer division (which effectively
 # rounds down).
 # tl;dr: GroupShift + means ceiling(GroupSize/2); GroupShift - means floor(GroupSize/2).
-GroupSize: 5
-GroupShift: +
+GroupSize: 5 1 1
+GroupShift: 2 1 1
